@@ -1,45 +1,48 @@
 import numpy as np
 import pandas as pd
 from datetime import datetime
-#import requests
 import scipy.io as sio
 import csv
-#import matlab.engine
-#eng = matlab.engine.start_matlab()
 import pickle
 
-def load_data():
-    contents = sio.loadmat('realitymining.mat')
-    dated_contents = sio.loadmat('post_data.mat')
-    print("done importing contents from matlab")
-    #locations = contents['s']['locs']
-    loc_ids = contents['s']['loc_ids']
-    dated_loc = dated_contents['all_people']
+def preprocess():
+    print("STAGE 1: import data from matlab and reformat")
+    contents = sio.loadmat('date_in_str.mat')
+    all_people = contents['all_people'] # <class 'numpy.ndarray'> (1,106)
+    numPeople = all_people.shape[1]
+    print("         - done importing contents from matlab")
 
-    numPeople = dated_loc.shape[1]
     all_data = {}
+    tot_data_points = 0
     for i in range(numPeople):
-        person_count = 0
-        person = {}
-        for j in range(dated_loc[:,i][0][:,0].shape[0]):
-            if len(dated_loc[:,i][0][:,1]) > 0:
-                location = dated_loc[:,i][0][:,1][j][0][0]
-                l_id = loc_ids[:,i][0][:,0][j]
-                person[dated_loc[:,i][0][:,0][j][0]] = [location, l_id] #person[time]=[location, loc_id]
-                person_count += 1
-        all_data[str(i)] = person
-
-    print(person_count)
+        person = all_people[0,i] # <class 'numpy.ndarray'> (num_timestamp,3)
+        num_timestamp = person.shape[0]
+        if num_timestamp == 0:
+            continue
+        p_dict = {}
+        for j in range(num_timestamp):
+            p_dict[person[j,0][0]] = [person[j,1][0][0],person[j,2][0][0]] # person[time]=[location, loc_id]
+        all_data[str(i)] = p_dict
+        tot_data_points += len(p_dict)
     
-    print("done processing data")
+    print("         - done reformatting data, total of {} people in the data".format(len(all_data)))
+    #example = all_data['2']
+    #print(example)
 
-    example = all_data['2']
-    print(example)
+    print("STAGE 2: get rid of people who have less than 75% of average data points")
+    avg_dp = tot_data_points/len(all_data)
+    threshold = avg_dp * 0.75
+    new_dict = {}
+    for p_id, p_info in all_data.items():
+        if len(p_info) >= threshold:
+            new_dict[p_id] = p_info
+    print("         - done getting rid of sparse data points, total of {} people in the data".format(len(new_dict)))
+
+    print("//TODO: STAGE 2: get rid of people who have less than 75% of average data points")
     
     with open('processed.pickle', 'wb') as handle:
-        pickle.dump(all_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    print("done dumping to pickle")
+        pickle.dump(new_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    print("         - done dumping to pickle")
 
 if __name__ == '__main__':
-    load_data()
+    preprocess()
