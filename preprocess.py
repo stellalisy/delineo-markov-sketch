@@ -44,7 +44,7 @@ def preprocess():
             new_dict[p_id] = p_info
     print("         - done getting rid of sparse data points, total of {} people in the data".format(len(new_dict)))
 
-    print("STAGE 3: only keep the datapoint of the longest duration in each hour")
+    print("STAGE 3: only keep the datapoint of the longest duration in each hour (preliminary)")
 
     #append duration of each data point to the list
     datetimeFormat = '%d-%b-%Y %H:%M:%S'
