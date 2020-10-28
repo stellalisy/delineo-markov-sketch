@@ -2,3 +2,5 @@
 *.pickle
 .DS_Store
 test.py
+*.pem
+
