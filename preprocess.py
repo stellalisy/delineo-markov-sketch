@@ -19,11 +19,16 @@ def preprocess():
     for i in range(numPeople):
         person = all_people[0,i] # <class 'numpy.ndarray'> (num_timestamp,3)
         num_timestamp = person.shape[0]
-        if num_timestamp == 0:
+        if num_timestamp == 0 or person.shape[1] == 0:
             continue
         p_info = []
         for j in range(num_timestamp):
-            time = person[j,0][0]
+            try:
+                time = person[j,0][0]
+            except:
+                print("IndexError: index 0 is out of bounds for axis 1 with size 0")
+                print(person.shape)
+                print("j = {}".format(j))
             #time = time.split('-')
             #time[1] = str(month_cal[time[1]])
             #time = '-'.join(time)
