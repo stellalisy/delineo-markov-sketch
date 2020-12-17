@@ -4,31 +4,47 @@ from scipy.special import softmax
 import random
 
 def transition_matrix():
+    """
+    param:
+      hourly_data: dict = {p_id: np_array([['time','lat','long'],...]),...}
+      all_locations: list = [(latitute, longitude), ... ]
+    this function gets the transition matrices for each person from the raw data
+    """
 
-    #import data from hourly_data
-    file_in = open("hourly_data.pickle",'rb')
+    file_in = open("barnsdall_processed_data.pickle",'rb')
     hourly_data = pickle.load(file_in)  #hourly_data: dict{'id': [data]}
     file_in.close()
 
-    trans_Ms = {}
-    #trans_Ms = {'p_id': np.arary(6, num_tags, num_tags), ...}
+    all_locations = hourly_data.pop("all_locations")
+    loc2num = {}
     i = 0
+    for location in all_locations:
+        loc2num[location] = i
+        i += 1
 
-    max_dim = find_dim(hourly_data)
+    trans_Ms = {}    #trans_Ms = {'p_id': np.arary(6, num_tags, num_tags), ...}
 
-    num_tags = int(max_dim/100) + 2
-    tags = create_tags(hourly_data, num_tags)
+    max_dim = len(all_locations)
 
+    num_tags = int(max_dim/10000) + 2
+
+    print("len(all_locations): {}".format(max_dim))
+    print("number of people: {}".format(len(hourly_data)))
     
+    tags = create_tags(hourly_data, num_tags)
+    print("number of tags: {}".format(len(tags)))
+    print(tags)
+    
+    i = 0
     #creating transition_matrix for every people
     for p_id, person in hourly_data.items():
-        #person: dict {datetime: [time, loc, loc_id, duration]}
+        #person: dict {time: (lat, long), ...}
         i += 1
         trans_Ms[p_id] = get_person_matrix(i, p_id, person, tags, num_tags + 1)
 
-    with open('diff_time_matrix.pickle', 'wb') as handle:
-        pickle.dump(trans_Ms, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    print("- done dumping to pickle")
+    #with open('diff_time_matrix.pickle', 'wb') as handle:
+    #    pickle.dump(trans_Ms, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #print("- done dumping to pickle")
 
 
 def find_dim(hourly_data):
@@ -45,25 +61,25 @@ def create_tags(hourly_data, num_tags):
     for person in hourly_data.values():
         [p_home, p_work] = find_home_work(person)
         for data in person.values():
-            if len(data) > 3 and data[2] not in all_id:
+            if data not in all_id:
                 random.seed(7)
-                all_id[data[2]] = str(random.randint(2,num_tags))
+                all_id[data] = str(random.randint(2,num_tags))
             if p_work != 'null':
                 all_id[p_work] = '1'
             if p_home != 'null':
                 all_id[p_home] = '0'
     print("num loc_id = {}".format(len(all_id)))
-    return all_id
+    return all_id  #all_id = { (lat,long): (int) tag, ...}
 
 def find_home_work(person):
     home = 'null'
     work = 'null'
     freq_count = {}
     for data in person.values():
-        if len(data) > 3 and data[2] not in freq_count:
-            freq_count[data[2]] = 1
-        if len(data) > 3 and data[2] in freq_count:
-            freq_count[data[2]] += 1
+        if data not in freq_count:
+            freq_count[data] = 1
+        if data in freq_count:
+            freq_count[data] += 1
     sorted_freq = sorted(freq_count, key=freq_count.get, reverse=True)[:2]
     if len(sorted_freq) > 1:
         home = sorted_freq[0]
@@ -104,7 +120,7 @@ def get_person_matrix(i, p_id, person, tags, num_dim):
         curr['date'] = time.date()
         hour = time.hour
         try:
-            curr['loc'] = person[time][2]
+            curr['loc'] = person[time]
         except IndexError:
             curr['loc'] = -1
 
@@ -152,7 +168,8 @@ def get_person_matrix(i, p_id, person, tags, num_dim):
     matrices[5] = softmax(weekend_aftn, axis = 1)
 
     #trans_M = [weekday_night_s, weekend_night_s, weekday_morn_s, weekend_morn_s, weekday_aftn_s, weekend_aftn_s]
-    print("{}. Person {}'s matrices Created".format(i, p_id))
+    if i % 200 == 0:
+        print("{}. Person {}'s matrices Created".format(i, p_id))
     return matrices
     
 if __name__ == '__main__':
